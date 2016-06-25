@@ -337,7 +337,7 @@ def generate_features(train, test, features):
 
 def model_loop(models_to_run, df, features, label, n_folds):
     '''
-    Given an array of models to run, a dataset, features, a label, and 
+    Given an array of models to run, a train dataset, features, a label, and 
     a number of folds, find the best model and its parameters among all the models and
     the cross product of parameters using k-fold cross validation.
 
@@ -368,10 +368,10 @@ def model_loop(models_to_run, df, features, label, n_folds):
                 for train_i, test_i in kf: 
                     test = df[:len(test_i)]
                     train = df[:len(train_i)]
-                    run_imputation(train, test, features)
+                    # run_imputation(train, test, features)
 
-                    new_log_col, age_bucket, income_bucket, scaled_income = generate_features(train, test, features)
-                    features = features + [new_log_col] + [age_bucket] + [income_bucket] + [scaled_income]
+                    # new_log_col, age_bucket, income_bucket, scaled_income = generate_features(train, test, features)
+                    # features = features + [new_log_col] + [age_bucket] + [income_bucket] + [scaled_income]
 
                     clf.set_params(**p)
                     clf.fit(train[features], train[label])
@@ -384,6 +384,9 @@ def model_loop(models_to_run, df, features, label, n_folds):
                     precision_curve, recall_curve, pr_thresholds = precision_recall_curve(test[label], y_pred_probs)
                     precision = precision_curve[:-1]
                     recall = recall_curve[:-1]
+
+                    print 'PRECISION', precision 
+                    print 'RECALL', recall
 
                     AUC = auc(recall, precision)
                     auc_per_fold.append(AUC)
@@ -407,28 +410,22 @@ def model_loop(models_to_run, df, features, label, n_folds):
 
     return best_overall_model, best_overall_params, best_overall_auc
 
-def go(training_file):
+def go(training_file, test_file):
     '''
     Run functions for specific data file
     '''
     
-    df = read_data(training_file)
+    train = read_data(training_file)
+    test = read_data(test_file)
     
-    #print_statistics(df)
-    #visualize_all(df)
+    #get features, label from create_header():
+    features = ["Months since Last Donation",
+                "Number of Donations",
+                "Total Volume Donated (c.c.)",
+                "Months since First Donation"]
 
-    #visualize_by_group_mean(df, ['NumberOfDependents', 'SeriousDlqin2yrs'], 'NumberOfDependents')
-    #visualize_by_group_mean(df, [age_bucket, "SeriousDlqin2yrs"], age_bucket)
-    #visualize_by_group_mean(df, [income_bucket, "SeriousDlqin2yrs"], income_bucket)
+    label = "Made Donation in March 2007"
 
-
-    features = ['RevolvingUtilizationOfUnsecuredLines', 
-                'age', 'NumberOfTime30-59DaysPastDueNotWorse', 'DebtRatio', 'MonthlyIncome',
-                'NumberOfOpenCreditLinesAndLoans', 'NumberOfTimes90DaysLate', 
-                'NumberRealEstateLoansOrLines', 
-                'NumberOfTime60-89DaysPastDueNotWorse', 'NumberOfDependents']
-
-    label = 'SeriousDlqin2yrs'
     
     models_to_run=['LR','NB','DT','RF', 'SVM']
 
@@ -436,19 +433,17 @@ def go(training_file):
     n_folds = 3
 
     start_loop = time()
-    best_overall_model, best_overall_params, best_overall_auc = model_loop(models_to_run, df, features, label, n_folds)
+    best_overall_model, best_overall_params, best_overall_auc = model_loop(models_to_run, train, features, label, n_folds)
     loop_time_minutes = (time() - start_loop) / 60
 
     print 'LOOP THRU ALL MODELS TOOK %s MINUTES' % loop_time_minutes
     print 'BEST MODEL %s \n BEST PARAMS %s \n BEST AUC %s \n' % (best_overall_model, best_overall_params, best_overall_auc)
     
 
-    # use entire dataset for train-testing on best model
-    train, test = train_test_split(df, test_size = 0.2)
-    run_imputation(train, test, features)
+    # run_imputation(train, test, features)
 
-    new_log_col, age_bucket, income_bucket, scaled_income = generate_features(train, test, features)
-    features = features + [new_log_col] + [age_bucket] + [income_bucket] + [scaled_income]
+    # new_log_col, age_bucket, income_bucket, scaled_income = generate_features(train, test, features)
+    # features = features + [new_log_col] + [age_bucket] + [income_bucket] + [scaled_income]
 
     assert not test.isnull().values.any()
 
@@ -476,17 +471,22 @@ def go(training_file):
 
         w.writerow([model, params, accuracy, precision, recall, AUC])
 
+
+    test['predicted'] = predicted_values
+    test.to_csv("/data/pred.csv")
+
     # plot precision-recall of best model
-    plot_precision_recall(test[label], y_pred_probs, model, params)
+    #plot_precision_recall(test[label], y_pred_probs, model, params)
 
 if __name__=="__main__":
-    instructions = '''Usage: python workflow.py training_file'''
+    instructions = '''Usage: python workflow.py training_file test_file'''
 
-    if(len(sys.argv) != 2):
+    if(len(sys.argv) != 3):
         print(instructions)
         sys.exit()
 
     training_file = sys.argv[1]
+    test_file = sys.argv[2]
 
-    go(training_file)
+    go(training_file, test_file)
 
