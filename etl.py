@@ -4,12 +4,26 @@
 
 ###############
 
+# USAGE: 
+    #print_statistics(df)
+    #visualize_all(df)
+
+    #visualize_by_group_mean(df, ['NumberOfDependents', 'SeriousDlqin2yrs'], 'NumberOfDependents')
+    #visualize_by_group_mean(df, [age_bucket, "SeriousDlqin2yrs"], age_bucket)
+    #visualize_by_group_mean(df, [income_bucket, "SeriousDlqin2yrs"], income_bucket)
+
+
 def read_data(file_name):
     '''
     Read in data and return a pandas df
     '''
     return pd.read_csv(file_name, header=0)
 
+def create_header():
+
+    # takes a header row with ugly names and puts it header-1-name
+    # prints the array to the screen and use it as a var called 
+    # features, label
 def print_statistics(data):
     '''
     Given a pandas dataframe, print dataframe statistics, correlation, and missing data.
